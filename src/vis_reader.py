@@ -6,8 +6,10 @@ and computer vision techniques.
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
+import math
+import os
 
-IMG_PATH = 'data/img/easy_sudoku_1.jpg'
+IMG_PATH = 'data/img/sudoku/easy_sudoku_5.png'
 IMG_SIZE = 360
 
 class puzzle_detector:
@@ -17,7 +19,6 @@ class puzzle_detector:
     """
     def __init__(self, img):
         self.image = img
-        self.puzzle = None
     
     def preprocess_image(self):
         """
@@ -36,7 +37,7 @@ class puzzle_detector:
         self.image = cv2.GaussianBlur(self.image, (3, 3), 0)
         self.image = cv2.adaptiveThreshold(self.image, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 7, 4)
 
-    def detect_corners_canny(self):
+    def detect_corners_canny(self, show_flag=0):
         """
         Placeholder method for detecting corners in the Sudoku puzzle using Canny edge detection.
         This method should be implemented to handle corner detection tasks.
@@ -48,15 +49,25 @@ class puzzle_detector:
         # img - Input image. It should be grayscale and float32 type.
         # threshold1 - First threshold for the hysteresis procedure.
         # threshold2 - Second threshold for the hysteresis procedure.
-        canny = cv2.Canny(self.image, 120, 255, apertureSize=5)
         
+        img = self.image.copy()
+        canny = cv2.Canny(img, 120, 255, apertureSize=7)
+        # Dilate the edges to make them more pronounced
+        canny = cv2.dilate(canny, None)
         # Find contours
         corners = cv2.findContours(canny, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)[0]
         # Sort contours by area and keep the largest one
         corners = sorted(corners, key=cv2.contourArea, reverse=True)[:10]
         # Draw contours on the image
         canny = cv2.cvtColor(canny, cv2.COLOR_GRAY2BGR)
-        cv2.drawContours(canny, corners[0], -1, (0, 255, 0), 3)
+        for c in corners:
+          cv2.drawContours(canny, c, -1, (0, 255, 0), 3)
+        # cv2.drawContours(canny, corners[0], -1, (0, 255, 0), 3)
+
+        if show_flag:
+            plt.imshow(canny, cmap='gray')
+            plt.title('Canny Edges')
+            plt.show()
 
         # Convert contours to a more usable format (e.g., list of points)
         corners = [cv2.approxPolyDP(c, 0.02 * cv2.arcLength(c, True), True) for c in corners]
@@ -119,6 +130,57 @@ class puzzle_detector:
 
         self.image = dst
 
+class number_identifier:
+    def __init__(self, img):
+        self.image = img
+        self.cells = []
+        self.split_image()
+
+    def show_cells(self, n=9):
+        """
+        Displays the first n cells of the Sudoku puzzle.
+        
+        Args:
+            n (int): The number of cells to display. Defaults to 9.
+        """
+        fig_dim = math.sqrt(n)
+        fig_dim = int(fig_dim) if fig_dim.is_integer() else int(fig_dim) + 1
+        for i in range(min(n, len(self.cells))):
+            plt.subplot(fig_dim, fig_dim, i + 1)
+            plt.imshow(self.cells[i], cmap='gray')
+            plt.axis('off')
+        plt.show()
+    
+    def save_cells(self, path='data/img/numbers/'):
+        """
+        Saves the individual cells of the Sudoku puzzle as image files.
+
+        Args:
+            path (str): The directory path where the cell images will be saved.
+        """
+        if not os.path.exists(path):
+            os.makedirs(path)
+        for i, cell in enumerate(self.cells):
+            cv2.imwrite(os.path.join(path, f'cell_{i}.png'), cell)
+
+    def split_image(self):
+        """
+        Method for splitting the Sudoku image into individual cells.
+        
+        Returns:
+            list: A list of images representing individual Sudoku cells.
+        """
+        # This is a placeholder implementation
+        # Actual implementation would involve splitting the image into 81 cells
+        cell_height = self.image.shape[0] // 9
+        cell_width = self.image.shape[1] // 9
+        cells = []
+        for i in range(9):
+            for j in range(9):
+                cell = self.image[i * cell_height:(i + 1) * cell_height, j * cell_width:(j + 1) * cell_width]
+                cells.append(cell)
+        self.cells = cells
+
 def read_image(filepath=IMG_PATH):
     """
     Reads an image file containing a Sudoku puzzle.
@@ -147,13 +209,12 @@ if __name__ == "__main__":
     sudoku.preprocess_image()
 
     # Detect corners using Canny edge detection
-    img, corners = sudoku.detect_corners_canny()
-    
-    # Use corners for perspective transform
-    sudoku.perspective_transform(corners)
+    img, corners = sudoku.detect_corners_canny(1)
 
-    plt.imshow(sudoku.image, cmap='gray')
-    plt.title('Transformed Sudoku Puzzle')
-    plt.axis('off')
-    plt.show()
+    # Use corners for perspective transform
+    sudoku.perspective_transform(corners, show_flag=True)
+    # number_id = number_identifier(sudoku.image)
+    # number_id.show_cells(9)  # Display the first 9 cells
+    # print(f"cell shape: {number_id.cells[0].shape if number_id.cells else 'No cells found'}")
+    # print(f"cell type: {type(number_id.cells[0]) if number_id.cells else 'No cells found'}")
     
