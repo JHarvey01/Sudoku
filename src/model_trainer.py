@@ -17,7 +17,7 @@ cell_counter = 0
 
 MODEL_TEST_PATH = 'data/NumberDetection/test'
 MODEL_TRAIN_PATH = 'data/NumberDetection/train'
-MODEL_SAVE_PATH = 'data/NumberDetection/models/'
+MODEL_SAVE_PATH = 'data/models/resnet18/'
 
 # Set the device to GPU if available, otherwise use CPU
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -42,7 +42,8 @@ class Model_Trainer:
 	])
 	
 	def __init__(self):
-		self.model = resnet18()
+		self.model = resnet18(weights=None)  # Initialize a ResNet18 model
+		self.model.fc = nn.Linear(self.model.fc.in_features, 10)
 		self.train_loader, self.test_loader = self.get_data_loaders()
 		criterion = nn.CrossEntropyLoss()
 		optimizer = optim.Adam(self.model.parameters(), lr=0.001)
@@ -58,7 +59,7 @@ class Model_Trainer:
 		timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M')
 
 
-		save_name = f'number_detection_model_{timestamp}_resnet18.pth'
+		save_name = f'number_detection_model_{timestamp}.pth'
 		torch.save(self.model.state_dict(), MODEL_SAVE_PATH+save_name)
 
 	
